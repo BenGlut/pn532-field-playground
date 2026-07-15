@@ -284,7 +284,7 @@
       <div class="field" id="spacingField" style="display:none">
         <div class="row"><label for="spacing">Reader-to-reader spacing</label><span class="val" id="spacingVal">58.65 mm</span></div>
         <input type="range" id="spacing" min="10" max="200" value="58.65" step="0.05">
-        <div class="hint2">Default 58.65 mm = a filament spool's cardboard core width (excl. masterspool) — the two RFID chips sit fixed at each end of that core. Turns off the Tiger Scale housing view — this is a bare cross-talk test. Both readers are simulated at the same power.</div>
+        <div class="hint2">This moves <b>reader 2</b> only — the two RFID chips stay a fixed 58.65 mm apart (the spool core's cardboard width, excl. masterspool), since they're glued to the same rigid core. Widen the spacing to add clearance around the core; narrow it to see the readers crowd it. Turns off the Tiger Scale housing view — this is a bare cross-talk test. Both readers are simulated at the same power.</div>
       </div>
 
       <button class="resetbtn" id="resetBtn">Reset to defaults</button>
@@ -312,7 +312,7 @@
         </div>
       </div>
 
-      <p class="hint">The reader antenna is modelled as the <b>square trace</b> a real PN532 board actually uses (not a circle) — the red sprite is the board itself, sized and shaped to match. The <b>donut</b> is an iso-surface: it traces the boundary where coupling equals your read threshold. If it looks like a filled-in blob rather than a ring with a visible hole, that's not a bug in the physics — it means even the <b>weakest interior spot (the dead centre of the loop, farthest from the copper)</b> still clears your threshold. Raise the threshold (or lower the power) until a hole actually opens up: that hole is the true weak spot, and it sits at the geometric centre — coupling is usually <b>strongest right at the trace itself</b>, not in the middle of the board. So placing the tag flush and centred works fine at healthy power, but if you're marginal, nudging it toward the copper outline rather than dead-centre can help. The thin lines threading through the donut are the coil's actual magnetic field lines (Biot–Savart around the square loop) — <b>the same closed loops</b>, split by colour where they cross to the housing side (amber) vs. the tag side (cyan). The badge next to the tag is your live read estimate — drag the tag around until it goes green. Turn on <b>2nd reader</b> to test two PN532 modules facing each other: the field lines and both donuts are recomputed from the two coils' <b>combined</b> field, so you can see where they cancel or reinforce as you change the spacing between them. A <b>second chip</b> also appears, mirroring the first one's position onto reader 2 — same lateral offset and standoff, since both chips are assumed fixed to the same rigid spool core — each with its own live read badge, so you can tell whether one, both, or neither is likely to read.</p>
+      <p class="hint">The reader antenna is modelled as the <b>square trace</b> a real PN532 board actually uses (not a circle) — the red sprite is the board itself, sized and shaped to match. The <b>donut</b> is an iso-surface: it traces the boundary where coupling equals your read threshold. If it looks like a filled-in blob rather than a ring with a visible hole, that's not a bug in the physics — it means even the <b>weakest interior spot (the dead centre of the loop, farthest from the copper)</b> still clears your threshold. Raise the threshold (or lower the power) until a hole actually opens up: that hole is the true weak spot, and it sits at the geometric centre — coupling is usually <b>strongest right at the trace itself</b>, not in the middle of the board. So placing the tag flush and centred works fine at healthy power, but if you're marginal, nudging it toward the copper outline rather than dead-centre can help. The thin lines threading through the donut are the coil's actual magnetic field lines (Biot–Savart around the square loop) — <b>the same closed loops</b>, split by colour where they cross to the housing side (amber) vs. the tag side (cyan). The badge next to the tag is your live read estimate — drag the tag around until it goes green. Turn on <b>2nd reader</b> to test two PN532 modules facing each other: the field lines and both donuts are recomputed from the two coils' <b>combined</b> field, so you can see where they cancel or reinforce as you change the spacing between them. A <b>second chip</b> also appears, always exactly 58.65 mm from the first along the core — a fixed physical distance that <b>does not stretch</b> when you move reader 2 — each with its own live read badge, so you can tell whether one, both, or neither is likely to read.</p>
     </main>
   </div>
 
@@ -464,6 +464,13 @@
   }
 
   function tagZ(){ return state.frontWall + state.standoff; }
+
+  // The two RFID chips are fixed to the same rigid cardboard spool core —
+  // their spacing is a physical constant, independent of how far apart the
+  // two READERS are set (that's what the "reader-to-reader spacing" slider
+  // controls). Moving the readers must not stretch the core.
+  var CORE_WIDTH = 58.65;
+  function tag2Z(){ return tagZ() + CORE_WIDTH; }
 
   function metricsAt(zCenter){
     var R = state.rAnt/2;
@@ -684,10 +691,10 @@
     geo.tagNormal = tag.normal;
     geo.tagCenter = tag.center;
     if (state.dualEnabled){
-      // Rigid-core assumption: both chips are fixed to the same cardboard
-      // core, so the 2nd chip mirrors the 1st chip's offset from its own
-      // (2nd) reader — same lateral position, same standoff from reader 2.
-      var tag2 = buildTagAt(state.spacing - tagZ());
+      // Rigid-core assumption: the 2nd chip is fixed CORE_WIDTH away from the
+      // 1st along the core — a physical constant, unaffected by the
+      // reader-to-reader spacing slider (that only moves reader 2 itself).
+      var tag2 = buildTagAt(tag2Z());
       geo.tag2 = tag2.ring;
       geo.tagNormal2 = tag2.normal;
       geo.tagCenter2 = tag2.center;
@@ -924,7 +931,7 @@
     // 2nd chip (dual-reader mode) — same rigid-core offset, mirrored onto reader 2
     var m2, lvl2, col2, tag2CenterProj;
     if (geo.tag2){
-      m2 = metricsAt(state.spacing - tagZ());
+      m2 = metricsAt(tag2Z());
       lvl2 = verdictLevel(m2.frontPct);
       col2 = levelColor(lvl2);
       ctx.strokeStyle = col2;
