@@ -128,7 +128,8 @@
   }
   .dualbtn[data-active="true"]{ color: var(--accent); border-color: var(--accent); background: rgba(95,208,224,0.1); }
 
-  .viz{ display:flex; flex-direction:column; gap: 14px; }
+  .viz{ display:flex; flex-direction:column; gap: 14px; position: sticky; top: 20px; align-self: start; }
+  @media (max-width: 900px){ .viz{ position: static; } }
 
   .readout-strip{
     display:flex; gap: 10px; padding: 12px 14px; flex-wrap: wrap; align-items:center;
@@ -189,7 +190,7 @@
       <h1>PN532 · Field Placement Sim — 3D</h1>
       <span class="sub">13.56 MHz near-field, front/back lobes</span>
     </div>
-    <p class="tag">Drag empty space to orbit, scroll to zoom. Drag the tag itself to slide it around — hold Shift while dragging to push it closer or farther. Built to help place a PN532 antenna inside the Tiger Scale housing.</p>
+    <p class="tag">Loads simulating the Tiger Scale itself: two PN532 readers 88 mm apart, facing the two RFID chips fixed to the spool core. Drag empty space to orbit, scroll to zoom. Drag chip 1 to slide the whole core around — hold Shift while dragging to push it closer or farther (chip 2 follows, rigidly).</p>
   </header>
 
   <div class="layout">
@@ -279,9 +280,9 @@
 
       <div class="field">
         <h2>Playground — two readers face to face</h2>
-        <button id="toggleDual" class="dualbtn" data-active="false">2nd reader (face-to-face)</button>
+        <button id="toggleDual" class="dualbtn" data-active="true">2nd reader (face-to-face)</button>
       </div>
-      <div class="field" id="spacingField" style="display:none">
+      <div class="field" id="spacingField">
         <div class="row"><label for="spacing">Reader-to-reader spacing</label><span class="val" id="spacingVal">88 mm</span></div>
         <input type="range" id="spacing" min="10" max="200" value="88" step="0.05">
         <div class="hint2">The two readers spread apart <b>symmetrically</b> around a fixed centre as you move this — the two RFID chips stay put, exactly 58.65 mm apart (the spool core's cardboard width, excl. masterspool), since they're glued to the same rigid core that never moves. Widen the spacing to add clearance around the core; narrow it to see the readers crowd it. Turns off the Tiger Scale housing view — this is a bare cross-talk test. Both readers are simulated at the same power.</div>
@@ -350,7 +351,7 @@
   var DEFAULTS = { rAnt:39, power:100, rTag:25, frontWall:4, backClear:15, standoff:0, lat:0, latY:0, tilt:0, thresh:40, spacing:88 };
   var state = {};
   Object.keys(DEFAULTS).forEach(function(k){ state[k] = DEFAULTS[k]; });
-  state.dualEnabled = false;
+  state.dualEnabled = true;
   var showFront = true, showBack = true, showEnvelope = true;
 
   // =========================================================
@@ -1076,9 +1077,9 @@
       });
     });
     cam.az = 35*Math.PI/180; cam.el = 20*Math.PI/180; cam.radius = 170;
-    state.dualEnabled = false;
-    els.toggleDual.setAttribute('data-active', false);
-    els.spacingField.style.display = 'none';
+    state.dualEnabled = true;
+    els.toggleDual.setAttribute('data-active', true);
+    els.spacingField.style.display = '';
     scheduleRender(true);
   });
 
