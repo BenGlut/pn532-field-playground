@@ -312,7 +312,7 @@
         </div>
       </div>
 
-      <p class="hint">The reader antenna is modelled as the <b>square trace</b> a real PN532 board actually uses (not a circle) — the red sprite is the board itself, sized and shaped to match. The <b>donut</b> is an iso-surface: it traces the boundary where coupling equals your read threshold. If it looks like a filled-in blob rather than a ring with a visible hole, that's not a bug in the physics — it means even the <b>weakest interior spot (the dead centre of the loop, farthest from the copper)</b> still clears your threshold. Raise the threshold (or lower the power) until a hole actually opens up: that hole is the true weak spot, and it sits at the geometric centre — coupling is usually <b>strongest right at the trace itself</b>, not in the middle of the board. So placing the tag flush and centred works fine at healthy power, but if you're marginal, nudging it toward the copper outline rather than dead-centre can help. The thin lines threading through the donut are the coil's actual magnetic field lines (Biot–Savart around the square loop) — <b>the same closed loops</b>, split by colour where they cross to the housing side (amber) vs. the tag side (cyan). The badge next to the tag is your live read estimate — drag the tag around until it goes green. Turn on <b>2nd reader</b> to test two PN532 modules facing each other: the field lines and both donuts are recomputed from the two coils' <b>combined</b> field, so you can see where they cancel or reinforce as you change the spacing between them — put the tag in the middle to see whether it still reads.</p>
+      <p class="hint">The reader antenna is modelled as the <b>square trace</b> a real PN532 board actually uses (not a circle) — the red sprite is the board itself, sized and shaped to match. The <b>donut</b> is an iso-surface: it traces the boundary where coupling equals your read threshold. If it looks like a filled-in blob rather than a ring with a visible hole, that's not a bug in the physics — it means even the <b>weakest interior spot (the dead centre of the loop, farthest from the copper)</b> still clears your threshold. Raise the threshold (or lower the power) until a hole actually opens up: that hole is the true weak spot, and it sits at the geometric centre — coupling is usually <b>strongest right at the trace itself</b>, not in the middle of the board. So placing the tag flush and centred works fine at healthy power, but if you're marginal, nudging it toward the copper outline rather than dead-centre can help. The thin lines threading through the donut are the coil's actual magnetic field lines (Biot–Savart around the square loop) — <b>the same closed loops</b>, split by colour where they cross to the housing side (amber) vs. the tag side (cyan). The badge next to the tag is your live read estimate — drag the tag around until it goes green. Turn on <b>2nd reader</b> to test two PN532 modules facing each other: the field lines and both donuts are recomputed from the two coils' <b>combined</b> field, so you can see where they cancel or reinforce as you change the spacing between them. A <b>second chip</b> also appears, mirroring the first one's position onto reader 2 — same lateral offset and standoff, since both chips are assumed fixed to the same rigid spool core — each with its own live read badge, so you can tell whether one, both, or neither is likely to read.</p>
     </main>
   </div>
 
@@ -465,11 +465,11 @@
 
   function tagZ(){ return state.frontWall + state.standoff; }
 
-  function metrics(){
+  function metricsAt(zCenter){
     var R = state.rAnt/2;
     var ref = couplingAt(0, 0, R*0.5, 0, state.rTag, false);
-    var front = couplingAt(state.lat, state.latY, tagZ(), state.tilt, state.rTag, true);
-    var frontFlat = couplingAt(state.lat, state.latY, tagZ(), 0, state.rTag, true);
+    var front = couplingAt(state.lat, state.latY, zCenter, state.tilt, state.rTag, true);
+    var frontFlat = couplingAt(state.lat, state.latY, zCenter, 0, state.rTag, true);
     var back = backExposureAt(state.backClear, true);
     var backRef = backExposureAt(R*0.5, false);
     var frontPct = ref>0 ? Math.max(0, Math.min(300,(front/ref)*100)) : 0;
@@ -477,6 +477,7 @@
     var tiltLoss = frontFlat>0 ? Math.max(0, Math.min(100, (1-front/frontFlat)*100)) : 0;
     return { frontPct: frontPct, backPct: backPct, tiltLoss: tiltLoss };
   }
+  function metrics(){ return metricsAt(tagZ()); }
 
   function verdictLevel(frontPct){
     var th = state.thresh;
@@ -520,10 +521,10 @@
     return edges.map(function(e){ return [corners[e[0]], corners[e[1]]]; });
   }
 
-  function buildTag(){
+  function buildTagAt(cz){
     var rt = state.rTag/2;
     var tt = state.tilt*Math.PI/180;
-    var cx = state.lat, cy = state.latY, cz = tagZ();
+    var cx = state.lat, cy = state.latY;
     var pts = [];
     var n = 40;
     for (var i=0;i<=n;i++){
@@ -538,6 +539,7 @@
     var normal = [[cx,cy,cz],[cx+nx*18,cy,cz+nz*18]];
     return { ring: pts, normal: normal, center: [cx,cy,cz] };
   }
+  function buildTag(){ return buildTagAt(tagZ()); }
 
   // Traces through the COMBINED field (single reader, or both if dual mode
   // is on) so lines correctly bend/cancel between two facing readers.
@@ -681,6 +683,17 @@
     geo.tag = tag.ring;
     geo.tagNormal = tag.normal;
     geo.tagCenter = tag.center;
+    if (state.dualEnabled){
+      // Rigid-core assumption: both chips are fixed to the same cardboard
+      // core, so the 2nd chip mirrors the 1st chip's offset from its own
+      // (2nd) reader — same lateral position, same standoff from reader 2.
+      var tag2 = buildTagAt(state.spacing - tagZ());
+      geo.tag2 = tag2.ring;
+      geo.tagNormal2 = tag2.normal;
+      geo.tagCenter2 = tag2.center;
+    } else {
+      geo.tag2 = null;
+    }
     geo.fieldLines = buildFieldLines();
     geo.board = buildBoardSprite();
   }
@@ -908,6 +921,27 @@
     var tagCenterProj = project(geo.tagCenter, W, H);
     lastTagScreen = { x: tagCenterProj.x, y: tagCenterProj.y };
 
+    // 2nd chip (dual-reader mode) — same rigid-core offset, mirrored onto reader 2
+    var m2, lvl2, col2, tag2CenterProj;
+    if (geo.tag2){
+      m2 = metricsAt(state.spacing - tagZ());
+      lvl2 = verdictLevel(m2.frontPct);
+      col2 = levelColor(lvl2);
+      ctx.strokeStyle = col2;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      geo.tag2.forEach(function(p,i){
+        var s = project(p, W, H);
+        if (i===0) ctx.moveTo(s.x,s.y); else ctx.lineTo(s.x,s.y);
+      });
+      ctx.closePath();
+      ctx.stroke();
+      var n1b = project(geo.tagNormal2[0], W, H), n2b = project(geo.tagNormal2[1], W, H);
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(n1b.x,n1b.y); ctx.lineTo(n2b.x,n2b.y); ctx.stroke();
+      tag2CenterProj = project(geo.tagCenter2, W, H);
+    }
+
     // labels
     ctx.font = '10px ui-monospace, monospace';
     ctx.fillStyle = 'rgba(219,230,238,0.55)';
@@ -923,8 +957,12 @@
       ctx.fillText('electronics / back panel', backLabel.x, backLabel.y+14);
     }
 
-    // live read-quality badge, anchored to the tag
-    drawBadge(ctx, tagCenterProj.x+14, tagCenterProj.y-16, Math.round(m.frontPct)+'% · '+levelLabel(lvl), col);
+    // live read-quality badge(s)
+    var badge1Text = (geo.tag2 ? 'Chip 1: ' : '') + Math.round(m.frontPct)+'% · '+levelLabel(lvl);
+    drawBadge(ctx, tagCenterProj.x+14, tagCenterProj.y-16, badge1Text, col);
+    if (geo.tag2){
+      drawBadge(ctx, tag2CenterProj.x+14, tag2CenterProj.y-16, 'Chip 2: '+Math.round(m2.frontPct)+'% · '+levelLabel(lvl2), col2);
+    }
 
     els.camReadout.textContent = 'az ' + Math.round(cam.az*180/Math.PI) + '° · el ' + Math.round(cam.el*180/Math.PI) + '°';
   }
