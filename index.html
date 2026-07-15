@@ -284,7 +284,7 @@
       <div class="field" id="spacingField" style="display:none">
         <div class="row"><label for="spacing">Reader-to-reader spacing</label><span class="val" id="spacingVal">58.65 mm</span></div>
         <input type="range" id="spacing" min="10" max="200" value="58.65" step="0.05">
-        <div class="hint2">This moves <b>reader 2</b> only — the two RFID chips stay a fixed 58.65 mm apart (the spool core's cardboard width, excl. masterspool), since they're glued to the same rigid core. Widen the spacing to add clearance around the core; narrow it to see the readers crowd it. Turns off the Tiger Scale housing view — this is a bare cross-talk test. Both readers are simulated at the same power.</div>
+        <div class="hint2">The two readers spread apart <b>symmetrically</b> around a fixed centre as you move this — the two RFID chips stay put, exactly 58.65 mm apart (the spool core's cardboard width, excl. masterspool), since they're glued to the same rigid core that never moves. Widen the spacing to add clearance around the core; narrow it to see the readers crowd it. Turns off the Tiger Scale housing view — this is a bare cross-talk test. Both readers are simulated at the same power.</div>
       </div>
 
       <button class="resetbtn" id="resetBtn">Reset to defaults</button>
@@ -436,10 +436,16 @@
   // loop shape, shifted, with the field negated. Superposition (Biot–Savart
   // is linear) gives the combined field; this is a simplified proxy for
   // cross-talk, not a full mutual-inductance/detuning simulation.
+  // The two readers spread apart SYMMETRICALLY around a fixed centre (z=0)
+  // as the spacing slider grows — they are what moves. The two RFID chips,
+  // glued to the same rigid spool core, stay put at that centre regardless.
+  function reader1Z(){ return state.dualEnabled ? -state.spacing/2 : 0; }
+  function reader2Z(){ return reader1Z() + state.spacing; }
+
   function totalFieldRaw(x, y, z){
-    var b1 = loopFieldPath(currentPath, x, y, z);
+    var b1 = loopFieldPath(currentPath, x, y, z - reader1Z());
     if (!state.dualEnabled) return b1;
-    var b2 = loopFieldPath(currentPath, x, y, z - state.spacing);
+    var b2 = loopFieldPath(currentPath, x, y, z - reader2Z());
     return [ b1[0]-b2[0], b1[1]-b2[1], b1[2]-b2[2] ];
   }
   function totalFieldMagAt(x, y, z){
@@ -463,13 +469,16 @@
     return Math.abs(b[2]) * p * Math.PI * R * R;
   }
 
-  function tagZ(){ return state.frontWall + state.standoff; }
-
   // The two RFID chips are fixed to the same rigid cardboard spool core —
   // their spacing is a physical constant, independent of how far apart the
   // two READERS are set (that's what the "reader-to-reader spacing" slider
-  // controls). Moving the readers must not stretch the core.
+  // controls). In dual mode they sit centred at z=0 by default (standoff
+  // nudges the whole core along z, but never stretches it).
   var CORE_WIDTH = 58.65;
+  function tagZ(){
+    if (state.dualEnabled) return -CORE_WIDTH/2 + state.standoff;
+    return state.frontWall + state.standoff;
+  }
   function tag2Z(){ return tagZ() + CORE_WIDTH; }
 
   function metricsAt(zCenter){
@@ -564,8 +573,8 @@
     return pts;
   }
 
-  // zOffset: 0 for reader 1, state.spacing for reader 2 (seeds live in that
-  // reader's own wire, but the trace follows the combined field).
+  // zOffset: reader1Z() or reader2Z() (seeds live in that reader's own wire,
+  // but the trace follows the combined field).
   function buildFieldLinesForReader(zOffset){
     var R = state.rAnt/2;
     var n = currentPath.length;
@@ -573,8 +582,10 @@
     var d0s = [0.06, 0.16, 0.32, 0.55].map(function(f){ return f*R; });
     var step = R*0.05, maxSteps = 200;
     var bboxR = R*4.2;
-    var reach = R*4.2 + Math.abs(state.dualEnabled ? state.spacing : 0);
-    var bboxZ = { mid: state.dualEnabled ? state.spacing/2 : 0, half: reach };
+    // The midpoint between the two readers is always z=0, whether that's
+    // reader 1 itself (single mode) or the symmetric centre (dual mode).
+    var reach = R*4.2 + (state.dualEnabled ? state.spacing/2 : 0);
+    var bboxZ = { mid: 0, half: reach };
     var lines = [];
     for (var i=0;i<n;i+=anchorStep){
       var fr = frameAt(currentPath, i);
@@ -590,8 +601,8 @@
   }
 
   function buildFieldLines(){
-    var lines = buildFieldLinesForReader(0);
-    if (state.dualEnabled) lines = lines.concat(buildFieldLinesForReader(state.spacing));
+    var lines = buildFieldLinesForReader(reader1Z());
+    if (state.dualEnabled) lines = lines.concat(buildFieldLinesForReader(reader2Z()));
     return lines;
   }
 
@@ -657,8 +668,8 @@
   }
 
   function buildEnvelope(){
-    var quads = buildEnvelopeForReader(0, 1);
-    if (state.dualEnabled) quads = quads.concat(buildEnvelopeForReader(state.spacing, -1));
+    var quads = buildEnvelopeForReader(reader1Z(), 1);
+    if (state.dualEnabled) quads = quads.concat(buildEnvelopeForReader(reader2Z(), -1));
     return quads;
   }
 
@@ -683,8 +694,8 @@
 
   function rebuildGeometry(){
     rebuildAntennaPath();
-    geo.coil = currentPath.map(function(p){ return [p[0], p[1], 0]; });
-    geo.coil2 = state.dualEnabled ? currentPath.map(function(p){ return [p[0], p[1], state.spacing]; }) : null;
+    geo.coil = currentPath.map(function(p){ return [p[0], p[1], reader1Z()]; });
+    geo.coil2 = state.dualEnabled ? currentPath.map(function(p){ return [p[0], p[1], reader2Z()]; }) : null;
     geo.enclosure = state.dualEnabled ? [] : buildEnclosureEdges();
     var tag = buildTag();
     geo.tag = tag.ring;
@@ -852,9 +863,9 @@
         sceneItems.push({ kind:'quad', sp:sp, front:q.front, depth:depth });
       });
     }
-    sceneItems.push({ kind:'board', depth: project([0,0,0], W, H).depth, zOffset: 0 });
+    sceneItems.push({ kind:'board', depth: project([0,0,reader1Z()], W, H).depth, zOffset: reader1Z() });
     if (state.dualEnabled){
-      sceneItems.push({ kind:'board', depth: project([0,0,state.spacing], W, H).depth, zOffset: state.spacing });
+      sceneItems.push({ kind:'board', depth: project([0,0,reader2Z()], W, H).depth, zOffset: reader2Z() });
     }
     sceneItems.sort(function(a,b){ return b.depth - a.depth; });
     sceneItems.forEach(function(item){
@@ -877,8 +888,9 @@
     });
 
     // field lines, colored by front(z>0)/back(z<0) relative to the midpoint
-    // between the two readers (single-reader mode: relative to z=0)
-    var frontSplit = state.dualEnabled ? state.spacing/2 : 0;
+    // between the two readers — always z=0, since the readers are placed
+    // symmetrically around that centre (or it IS reader 1, in single mode)
+    var frontSplit = 0;
     geo.fieldLines.forEach(function(line){
       drawPolyline3D(ctx, W, H, line, function(pa, pb){
         var zmid = (pa[2]+pb[2])/2;
@@ -953,13 +965,13 @@
     ctx.font = '10px ui-monospace, monospace';
     ctx.fillStyle = 'rgba(219,230,238,0.55)';
     ctx.textAlign = 'center';
-    var coilLabel = project([0, R*1.4+8, 0], W, H);
+    var coilLabel = project([0, R*1.4+8, reader1Z()], W, H);
     ctx.fillText(state.dualEnabled ? 'PN532 #1' : 'PN532 board', coilLabel.x, coilLabel.y);
     if (state.dualEnabled){
-      var coil2Label = project([0, R*1.4+8, state.spacing], W, H);
+      var coil2Label = project([0, R*1.4+8, reader2Z()], W, H);
       ctx.fillText('PN532 #2', coil2Label.x, coil2Label.y);
     } else {
-      var backLabel = project([0,0,-state.backClear], W, H);
+      var backLabel = project([0,0,reader1Z()-state.backClear], W, H);
       ctx.fillStyle = 'rgba(245,146,74,0.75)';
       ctx.fillText('electronics / back panel', backLabel.x, backLabel.y+14);
     }
