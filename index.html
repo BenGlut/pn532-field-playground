@@ -1,0 +1,1103 @@
+<meta charset="UTF-8">
+<title>PN532 Field Placement Simulator — 3D</title>
+<style>
+  :root{
+    --bg: #0a0e13;
+    --panel: #10161d;
+    --panel-2: #141b23;
+    --border: #232d38;
+    --text: #dbe6ee;
+    --text-dim: #7d8fa0;
+    --text-faint: #4c5c6c;
+    --accent: #5fd0e0;
+    --accent-dim: #2f5a63;
+    --front: #5fd0e0;
+    --back: #f5924a;
+    --good: #4ade80;
+    --warn: #f5b942;
+    --bad: #f0605a;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", "JetBrains Mono", Consolas, Menlo, monospace;
+    --sans: -apple-system, "Segoe UI", "IBM Plex Sans", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:
+      radial-gradient(ellipse at 20% -10%, #10222a 0%, transparent 55%),
+      var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+
+  .app{ max-width: 1220px; margin: 0 auto; padding: 28px 20px 60px; }
+
+  header.top{
+    display:flex; align-items:baseline; justify-content:space-between; gap:16px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 16px; margin-bottom: 22px;
+    flex-wrap: wrap;
+  }
+  header.top .brand{ display:flex; align-items:baseline; gap:10px; }
+  header.top h1{
+    font-family: var(--mono);
+    font-size: 15px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin:0;
+    font-weight: 600;
+  }
+  header.top .sub{
+    font-size: 13px;
+    color: var(--text-dim);
+    font-family: var(--mono);
+  }
+  header.top p.tag{
+    margin:0; color: var(--text-dim); font-size: 13.5px; max-width: 42ch; text-wrap: balance;
+  }
+
+  .layout{ display:grid; grid-template-columns: 260px 1fr; gap: 20px; align-items:start; }
+  @media (max-width: 900px){ .layout{ grid-template-columns: 1fr; } }
+
+  .panel{
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+
+  .controls{ padding: 16px 16px 18px; display:flex; flex-direction:column; gap: 16px; }
+  .controls h2{
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text-faint); margin: 0 0 2px;
+  }
+  .field{ display:flex; flex-direction:column; gap:6px; }
+  .field .row{ display:flex; justify-content:space-between; align-items:baseline; }
+  .field label{ font-size: 12.5px; color: var(--text-dim); }
+  .field .val{ font-family: var(--mono); font-size: 12.5px; color: var(--text); font-variant-numeric: tabular-nums; }
+  input[type="range"]{
+    -webkit-appearance:none; appearance:none; width:100%; height: 4px;
+    background: var(--border); border-radius: 3px; outline:none; margin: 4px 0 2px;
+  }
+  input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance:none; appearance:none;
+    width: 14px; height:14px; border-radius:50%;
+    background: var(--accent); cursor:pointer;
+    border: 2px solid #05191d;
+    box-shadow: 0 0 0 1px var(--accent-dim);
+  }
+  input[type="range"]::-moz-range-thumb{
+    width: 14px; height:14px; border-radius:50%;
+    background: var(--accent); cursor:pointer; border: 2px solid #05191d;
+  }
+  .divider{ height:1px; background: var(--border); margin: 2px 0; }
+
+  .presetbar{ display:flex; gap:6px; flex-wrap:wrap; }
+  .presetbar button{
+    font-family: var(--mono); font-size: 11px; color: var(--text-dim);
+    background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px;
+    padding: 5px 8px; cursor:pointer;
+  }
+  .presetbar button:hover{ color: var(--text); border-color: var(--accent-dim); }
+  .presetbar button.active{ color: var(--bg); background: var(--accent); border-color: var(--accent); }
+  button:focus-visible, input:focus-visible{ outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .resetbtn{
+    margin-top: 4px; font-family: var(--mono); font-size: 11.5px; color: var(--text-dim);
+    background: transparent; border: 1px solid var(--border); border-radius: 6px;
+    padding: 7px 10px; cursor: pointer; text-align:center;
+  }
+  .resetbtn:hover{ color: var(--text); border-color: var(--accent-dim); }
+
+  .toggle-row{ display:flex; gap:8px; }
+  .toggle-row button{
+    flex:1; font-family: var(--mono); font-size: 11px; padding: 7px 6px; border-radius: 6px;
+    border: 1px solid var(--border); background: var(--panel-2); cursor:pointer;
+  }
+  .toggle-row button[data-active="true"].front{ color: var(--front); border-color: var(--front); background: rgba(95,208,224,0.1); }
+  .toggle-row button[data-active="true"].back{ color: var(--back); border-color: var(--back); background: rgba(245,146,74,0.1); }
+  .toggle-row button[data-active="true"].donut{ color: var(--text); border-color: var(--text-dim); background: rgba(219,230,238,0.08); }
+  .toggle-row button[data-active="false"]{ color: var(--text-faint); }
+  .hint2{ font-size: 11px; color: var(--text-faint); margin-top: 2px; }
+
+  .dualbtn{
+    width:100%; font-family: var(--mono); font-size: 11.5px; padding: 8px 10px; border-radius: 6px;
+    border: 1px solid var(--border); background: var(--panel-2); cursor:pointer; color: var(--text-dim);
+  }
+  .dualbtn[data-active="true"]{ color: var(--accent); border-color: var(--accent); background: rgba(95,208,224,0.1); }
+
+  .viz{ display:flex; flex-direction:column; gap: 14px; }
+
+  .readout-strip{
+    display:flex; gap: 10px; padding: 12px 14px; flex-wrap: wrap; align-items:center;
+  }
+  .verdict{
+    font-family: var(--mono); font-size: 12px; letter-spacing:0.03em; text-transform:uppercase;
+    padding: 6px 12px; border-radius: 999px; font-weight:600;
+    display:flex; align-items:center; gap:7px;
+    border: 1px solid transparent;
+  }
+  .verdict .dot{ width:7px; height:7px; border-radius:50%; }
+  .verdict.good{ background: rgba(74,222,128,0.1); color: var(--good); border-color: rgba(74,222,128,0.35); }
+  .verdict.good .dot{ background: var(--good); box-shadow: 0 0 8px var(--good); }
+  .verdict.warn{ background: rgba(245,185,66,0.1); color: var(--warn); border-color: rgba(245,185,66,0.35); }
+  .verdict.warn .dot{ background: var(--warn); box-shadow: 0 0 8px var(--warn); }
+  .verdict.bad{ background: rgba(240,96,90,0.1); color: var(--bad); border-color: rgba(240,96,90,0.35); }
+  .verdict.bad .dot{ background: var(--bad); box-shadow: 0 0 8px var(--bad); }
+
+  .metrics{ display:flex; gap: 18px; margin-left: auto; flex-wrap:wrap; }
+  .metric{ text-align:right; }
+  .metric .k{ font-size: 10px; color: var(--text-faint); text-transform:uppercase; letter-spacing:0.06em; font-family: var(--mono); }
+  .metric .v{ font-family: var(--mono); font-size: 14px; color: var(--text); font-variant-numeric: tabular-nums; }
+  .metric .v.front{ color: var(--front); }
+  .metric .v.back{ color: var(--back); }
+
+  .canvas-block{ padding: 10px 10px 8px; position: relative; }
+  .canvas-block .cap{
+    display:flex; justify-content:space-between; font-family: var(--mono); font-size: 10.5px;
+    color: var(--text-faint); text-transform:uppercase; letter-spacing:0.05em; padding: 2px 4px 8px;
+  }
+  canvas{ display:block; width:100%; height:auto; border-radius: 6px; cursor: grab; touch-action:none; background: #060a0e; }
+  canvas.grabbing{ cursor: grabbing; }
+
+  .legend{ display:flex; align-items:center; gap:16px; padding: 8px 6px 2px; flex-wrap:wrap; }
+  .legend .item{ display:flex; align-items:center; gap:6px; font-family: var(--mono); font-size: 10.5px; color: var(--text-dim); }
+  .legend .swatch{ width:14px; height:3px; border-radius:2px; }
+  .legend .swatch.front{ background: var(--front); }
+  .legend .swatch.back{ background: var(--back); }
+  .legend .swatch.tag{ background: var(--text); }
+  .legend .swatch.board{ background: #9c2b32; }
+  .legend .swatch.coil2{ background: #8fd0e8; }
+
+  p.hint{ margin: 0; font-size: 12.5px; color: var(--text-dim); padding: 2px 4px; }
+  p.hint b{ color: var(--text); font-weight: 600; }
+
+  footer.note{
+    margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--border);
+    font-size: 12px; color: var(--text-faint); line-height: 1.6; max-width: 78ch;
+  }
+  footer.note b{ color: var(--text-dim); }
+
+  @media (prefers-reduced-motion: reduce){ * { transition: none !important; } }
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <h1>PN532 · Field Placement Sim — 3D</h1>
+      <span class="sub">13.56 MHz near-field, front/back lobes</span>
+    </div>
+    <p class="tag">Drag empty space to orbit, scroll to zoom. Drag the tag itself to slide it around — hold Shift while dragging to push it closer or farther. Built to help place a PN532 antenna inside the Tiger Scale housing.</p>
+  </header>
+
+  <div class="layout">
+    <aside class="panel controls">
+      <div class="field">
+        <h2>Reader antenna (square trace)</h2>
+        <div class="row"><label for="rAnt">Loop size (side)</label><span class="val" id="rAntVal">39 mm</span></div>
+        <input type="range" id="rAnt" min="15" max="120" value="39" step="1">
+      </div>
+      <div class="presetbar" id="antPresets">
+        <button data-set="rAnt" data-v="39" class="active">PN532 module</button>
+        <button data-set="rAnt" data-v="50">Ext. antenna</button>
+        <button data-set="rAnt" data-v="90">Large ext.</button>
+      </div>
+
+      <div class="field">
+        <div class="row"><label for="power">Reader power (gain)</label><span class="val" id="powerVal">100 %</span></div>
+        <input type="range" id="power" min="20" max="300" value="100" step="5">
+        <div class="hint2">More power pushes the donut and coupling % out; it doesn't change the field lines' shape, only their strength.</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="field">
+        <h2>Tag antenna</h2>
+        <div class="row"><label for="rTag">Loop diameter</label><span class="val" id="rTagVal">25 mm</span></div>
+        <input type="range" id="rTag" min="10" max="90" value="25" step="1">
+      </div>
+      <div class="presetbar">
+        <button data-set="rTag" data-v="25" class="active">NTAG215</button>
+        <button data-set="rTag" data-v="20">Sticker</button>
+        <button data-set="rTag" data-v="30">TigerTag</button>
+        <button data-set="rTag" data-v="42">ISO card</button>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="field">
+        <h2>Tiger Scale housing</h2>
+        <div class="row"><label for="frontWall">Front wall (coil→outer face)</label><span class="val" id="frontWallVal">4 mm</span></div>
+        <input type="range" id="frontWall" min="0" max="30" value="4" step="1">
+      </div>
+      <div class="field">
+        <div class="row"><label for="backClear">Back clearance (coil→electronics)</label><span class="val" id="backClearVal">15 mm</span></div>
+        <input type="range" id="backClear" min="2" max="60" value="15" step="1">
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="field">
+        <h2>Tag position</h2>
+        <div class="row"><label for="standoff">Standoff from housing face</label><span class="val" id="standoffVal">0 mm</span></div>
+        <input type="range" id="standoff" min="0" max="60" value="0" step="1">
+      </div>
+      <div class="field">
+        <div class="row"><label for="lat">Lateral offset (x)</label><span class="val" id="latVal">0 mm</span></div>
+        <input type="range" id="lat" min="-100" max="100" value="0" step="1">
+      </div>
+      <div class="field">
+        <div class="row"><label for="latY">Lateral offset (y)</label><span class="val" id="latYVal">0 mm</span></div>
+        <input type="range" id="latY" min="-100" max="100" value="0" step="1">
+      </div>
+      <div class="field">
+        <div class="row"><label for="tilt">Tilt</label><span class="val" id="tiltVal">0°</span></div>
+        <input type="range" id="tilt" min="-90" max="90" value="0" step="1">
+      </div>
+      <div class="hint2">Or just drag the tag directly in the 3D view.</div>
+
+      <div class="divider"></div>
+
+      <div class="field">
+        <h2>Show</h2>
+        <div class="toggle-row">
+          <button id="toggleEnvelope" class="donut" data-active="true">Donut</button>
+          <button id="toggleFront" class="front" data-active="true">Front</button>
+          <button id="toggleBack" class="back" data-active="true">Back</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="row"><label for="thresh">Read threshold</label><span class="val" id="threshVal">40 %</span></div>
+        <input type="range" id="thresh" min="5" max="100" value="40" step="1">
+        <div class="hint2">Sets the donut's size — the coupling boundary it traces.</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="field">
+        <h2>Playground — two readers face to face</h2>
+        <button id="toggleDual" class="dualbtn" data-active="false">2nd reader (face-to-face)</button>
+      </div>
+      <div class="field" id="spacingField" style="display:none">
+        <div class="row"><label for="spacing">Reader-to-reader spacing</label><span class="val" id="spacingVal">60 mm</span></div>
+        <input type="range" id="spacing" min="10" max="200" value="60" step="1">
+        <div class="hint2">Turns off the Tiger Scale housing view — this is a bare cross-talk test. Both readers are simulated at the same power.</div>
+      </div>
+
+      <button class="resetbtn" id="resetBtn">Reset to defaults</button>
+    </aside>
+
+    <main class="viz">
+      <div class="panel readout-strip">
+        <span class="verdict good" id="verdict"><span class="dot"></span><span id="verdictText">Likely read</span></span>
+        <div class="metrics">
+          <div class="metric"><div class="k">Front coupling</div><div class="v front" id="mFront">100 %</div></div>
+          <div class="metric"><div class="k">Back exposure</div><div class="v back" id="mBack">—</div></div>
+          <div class="metric"><div class="k">Tilt loss</div><div class="v" id="mTilt">0 %</div></div>
+        </div>
+      </div>
+
+      <div class="panel canvas-block">
+        <div class="cap"><span>3D view</span><span id="camReadout">az 35° · el 20°</span></div>
+        <canvas id="scene" width="920" height="560"></canvas>
+        <div class="legend">
+          <span class="item"><span class="swatch front"></span>front lobe (toward tag)</span>
+          <span class="item"><span class="swatch back"></span>back lobe (into housing)</span>
+          <span class="item"><span class="swatch tag"></span>tag / enclosure wireframe</span>
+          <span class="item"><span class="swatch board"></span>PN532 board (drag the tag to test placement)</span>
+          <span class="item"><span class="swatch coil2"></span>PN532 #2 trace (dual-reader playground)</span>
+        </div>
+      </div>
+
+      <p class="hint">The reader antenna is modelled as the <b>square trace</b> a real PN532 board actually uses (not a circle) — the red sprite is the board itself, sized and shaped to match. The <b>donut</b> is an iso-surface: it traces the boundary where coupling equals your read threshold. If it looks like a filled-in blob rather than a ring with a visible hole, that's not a bug in the physics — it means even the <b>weakest interior spot (the dead centre of the loop, farthest from the copper)</b> still clears your threshold. Raise the threshold (or lower the power) until a hole actually opens up: that hole is the true weak spot, and it sits at the geometric centre — coupling is usually <b>strongest right at the trace itself</b>, not in the middle of the board. So placing the tag flush and centred works fine at healthy power, but if you're marginal, nudging it toward the copper outline rather than dead-centre can help. The thin lines threading through the donut are the coil's actual magnetic field lines (Biot–Savart around the square loop) — <b>the same closed loops</b>, split by colour where they cross to the housing side (amber) vs. the tag side (cyan). The badge next to the tag is your live read estimate — drag the tag around until it goes green. Turn on <b>2nd reader</b> to test two PN532 modules facing each other: the field lines and both donuts are recomputed from the two coils' <b>combined</b> field, so you can see where they cancel or reinforce as you change the spacing between them — put the tag in the middle to see whether it still reads.</p>
+    </main>
+  </div>
+
+  <footer class="note">
+    <b>Model.</b> The reader antenna is simulated as a rounded-square current loop — matching the actual square PCB trace on a PN532 module (see the board sprite) rather than a circular approximation. Field is computed by numerically integrating the Biot–Savart law around that square path at any 3D point, and both the field lines and the donut iso-surface are built the same way: a tube swept around the loop's perimeter, not a simple revolved circle. The <b>reader power</b> slider scales the coil's drive current — it grows or shrinks the donut and the coupling/exposure percentages, but never changes the field lines' shape (a stronger field doesn't bend differently, it just reaches farther). The NTAG215 tag is still modelled as a small circular loop (that part of the physics doesn't change shape-to-shape). Coupling and exposure numbers are <b>relative</b>, not calibrated field strengths: your board's real matching network, driver gain, and any metal/ferrite in the housing all shift the real numbers. Use this to reason about geometry — how much front wall you can afford, how close the electronics can sit behind the coil, how much tilt and offset you can tolerate — then confirm with a real tag against the actual housing.
+    <b>Dual-reader playground.</b> Two facing PN532 loops are summed by superposition (Biot–Savart is linear) with the second loop wound the opposite way in the global frame, since it faces back at the first — this is a reasonable proxy for whether one reader's field reaches into the other's read zone. It is <b>not</b> a full mutual-inductance/impedance-detuning simulation: on real hardware, two coils this close also shift each other's tuning and Q, which this field-only model doesn't capture. Treat it as "does the geometry leave room for the fields to coexist," then verify the actual detuning on the bench.
+  </footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var els = {};
+  ['rAnt','power','rTag','frontWall','backClear','standoff','lat','latY','tilt','thresh','spacing'].forEach(function(k){
+    els[k] = document.getElementById(k);
+    els[k+'Val'] = document.getElementById(k+'Val');
+  });
+  els.verdict = document.getElementById('verdict');
+  els.verdictText = document.getElementById('verdictText');
+  els.mFront = document.getElementById('mFront');
+  els.mBack = document.getElementById('mBack');
+  els.mTilt = document.getElementById('mTilt');
+  els.canvas = document.getElementById('scene');
+  els.camReadout = document.getElementById('camReadout');
+  els.resetBtn = document.getElementById('resetBtn');
+  els.toggleFront = document.getElementById('toggleFront');
+  els.toggleBack = document.getElementById('toggleBack');
+  els.toggleEnvelope = document.getElementById('toggleEnvelope');
+  els.toggleDual = document.getElementById('toggleDual');
+  els.spacingField = document.getElementById('spacingField');
+
+  var UNITS = { rAnt:'mm', power:'%', rTag:'mm', frontWall:'mm', backClear:'mm', standoff:'mm', lat:'mm', latY:'mm', tilt:'°', thresh:'%', spacing:'mm' };
+
+  var DEFAULTS = { rAnt:39, power:100, rTag:25, frontWall:4, backClear:15, standoff:0, lat:0, latY:0, tilt:0, thresh:40, spacing:60 };
+  var state = {};
+  Object.keys(DEFAULTS).forEach(function(k){ state[k] = DEFAULTS[k]; });
+  state.dualEnabled = false;
+  var showFront = true, showBack = true, showEnvelope = true;
+
+  // =========================================================
+  // Square-loop antenna physics (PN532 trace is square, not round)
+  // =========================================================
+  var currentPath = [];   // cached rounded-square perimeter for the reader antenna, z=0 plane
+  var CORNER_RATIO = 0.22;
+
+  function buildRoundedSquarePath(half, corner, nTotal){
+    corner = Math.min(corner, half*0.9);
+    var Ls = 2*(half-corner);
+    var La = corner*Math.PI/2;
+    var segs = [
+      {type:'line', p0:[half, -(half-corner)], p1:[half, half-corner], len:Ls},
+      {type:'arc',  c:[half-corner, half-corner], a0:0, a1:Math.PI/2, len:La},
+      {type:'line', p0:[half-corner, half], p1:[-(half-corner), half], len:Ls},
+      {type:'arc',  c:[-(half-corner), half-corner], a0:Math.PI/2, a1:Math.PI, len:La},
+      {type:'line', p0:[-half, half-corner], p1:[-half, -(half-corner)], len:Ls},
+      {type:'arc',  c:[-(half-corner), -(half-corner)], a0:Math.PI, a1:3*Math.PI/2, len:La},
+      {type:'line', p0:[-(half-corner), -half], p1:[half-corner, -half], len:Ls},
+      {type:'arc',  c:[half-corner, -(half-corner)], a0:3*Math.PI/2, a1:2*Math.PI, len:La}
+    ];
+    var P = segs.reduce(function(s,seg){ return s+seg.len; }, 0);
+    var pts = [];
+    segs.forEach(function(seg){
+      var count = Math.max(2, Math.round(nTotal * seg.len/P));
+      for (var i=0;i<count;i++){
+        var t = i/count;
+        if (seg.type === 'line'){
+          pts.push([ seg.p0[0] + (seg.p1[0]-seg.p0[0])*t, seg.p0[1] + (seg.p1[1]-seg.p0[1])*t ]);
+        } else {
+          var a = seg.a0 + (seg.a1-seg.a0)*t;
+          pts.push([ seg.c[0] + corner*Math.cos(a), seg.c[1] + corner*Math.sin(a) ]);
+        }
+      }
+    });
+    return pts;
+  }
+
+  function rebuildAntennaPath(){
+    var half = state.rAnt/2;
+    currentPath = buildRoundedSquarePath(half, half*CORNER_RATIO, 64);
+  }
+
+  // Biot–Savart around an arbitrary closed planar loop (in the z=0 plane),
+  // evaluated at any 3D point. Works the same for a circle or a square trace.
+  function loopFieldPath(path, x, y, z){
+    var Bx=0, By=0, Bz=0;
+    var n = path.length;
+    for (var i=0;i<n;i++){
+      var p0 = path[i], p1 = path[(i+1)%n];
+      var dlx = p1[0]-p0[0], dly = p1[1]-p0[1];
+      var midx = (p0[0]+p1[0])/2, midy = (p0[1]+p1[1])/2;
+      var rx = x-midx, ry = y-midy, rz = z;
+      var rmag2 = rx*rx+ry*ry+rz*rz;
+      var rmag = Math.sqrt(rmag2) + 1e-6;
+      var r3 = rmag2*rmag;
+      var cx = dly*rz;
+      var cy = -dlx*rz;
+      var cz = dlx*ry - dly*rx;
+      var k = 1/(4*Math.PI*r3);
+      Bx += k*cx; By += k*cy; Bz += k*cz;
+    }
+    return [Bx, By, Bz];
+  }
+
+  // Raw (unpowered) field magnitude — the antenna's baseline geometric shape,
+  // independent of the reader-power knob. Used to define fixed thresholds.
+  function fieldMagPath(x, y, z){
+    var b = loopFieldPath(currentPath, x, y, z);
+    return Math.sqrt(b[0]*b[0] + b[1]*b[1] + b[2]*b[2]);
+  }
+
+  // ---- coupling model ----
+  // powered=false gives a fixed, power-independent baseline (used as the
+  // "how much coupling counts as good" reference); powered=true gives what's
+  // actually achieved at the current reader-power setting.
+  function powerFactor(){ return state.power/100; }
+
+  // Two identical readers facing each other: reader 2 sits in a parallel
+  // plane at z = spacing, wound the opposite way in the global frame (its
+  // own "front" points back at reader 1) — so its contribution is the same
+  // loop shape, shifted, with the field negated. Superposition (Biot–Savart
+  // is linear) gives the combined field; this is a simplified proxy for
+  // cross-talk, not a full mutual-inductance/detuning simulation.
+  function totalFieldRaw(x, y, z){
+    var b1 = loopFieldPath(currentPath, x, y, z);
+    if (!state.dualEnabled) return b1;
+    var b2 = loopFieldPath(currentPath, x, y, z - state.spacing);
+    return [ b1[0]-b2[0], b1[1]-b2[1], b1[2]-b2[2] ];
+  }
+  function totalFieldMagAt(x, y, z){
+    var b = totalFieldRaw(x, y, z);
+    return Math.sqrt(b[0]*b[0] + b[1]*b[1] + b[2]*b[2]);
+  }
+
+  function couplingAt(tagX, tagY, z, tiltDeg, rTag, powered){
+    var rt = rTag/2;
+    var b = powered ? totalFieldRaw(tagX, tagY, z) : loopFieldPath(currentPath, tagX, tagY, z);
+    var p = powered ? powerFactor() : 1;
+    var tt = tiltDeg * Math.PI/180;
+    var nx = Math.sin(tt), nz = Math.cos(tt);
+    var flux = Math.abs(b[0]*nx + b[2]*nz) * p * Math.PI * rt * rt;
+    return flux;
+  }
+  function backExposureAt(backClear, powered){
+    var R = state.rAnt/2;
+    var b = loopFieldPath(currentPath, 0, 0, -backClear);
+    var p = powered ? powerFactor() : 1;
+    return Math.abs(b[2]) * p * Math.PI * R * R;
+  }
+
+  function tagZ(){ return state.frontWall + state.standoff; }
+
+  function metrics(){
+    var R = state.rAnt/2;
+    var ref = couplingAt(0, 0, R*0.5, 0, state.rTag, false);
+    var front = couplingAt(state.lat, state.latY, tagZ(), state.tilt, state.rTag, true);
+    var frontFlat = couplingAt(state.lat, state.latY, tagZ(), 0, state.rTag, true);
+    var back = backExposureAt(state.backClear, true);
+    var backRef = backExposureAt(R*0.5, false);
+    var frontPct = ref>0 ? Math.max(0, Math.min(300,(front/ref)*100)) : 0;
+    var backPct = backRef>0 ? Math.max(0, Math.min(300,(back/backRef)*100)) : 0;
+    var tiltLoss = frontFlat>0 ? Math.max(0, Math.min(100, (1-front/frontFlat)*100)) : 0;
+    return { frontPct: frontPct, backPct: backPct, tiltLoss: tiltLoss };
+  }
+
+  function verdictLevel(frontPct){
+    var th = state.thresh;
+    if (frontPct >= th) return 'good';
+    if (frontPct >= th*0.5) return 'warn';
+    return 'bad';
+  }
+  function levelColor(lvl){ return lvl==='good' ? '#4ade80' : (lvl==='warn' ? '#f5b942' : '#f0605a'); }
+  function levelLabel(lvl){ return lvl==='good' ? 'Likely read' : (lvl==='warn' ? 'Marginal' : 'Unlikely'); }
+
+  // =========================================================
+  // local Frenet-ish frame helper (tangent/outward-normal) for a planar loop
+  // =========================================================
+  function frameAt(path, i){
+    var n = path.length;
+    var pPrev = path[(i-1+n)%n], p0 = path[i], pNext = path[(i+1)%n];
+    var tx = pNext[0]-pPrev[0], ty = pNext[1]-pPrev[1];
+    var tl = Math.sqrt(tx*tx+ty*ty) + 1e-9;
+    tx/=tl; ty/=tl;
+    return { p:p0, nx:ty, ny:-tx };
+  }
+
+  // =========================================================
+  // 3D geometry
+  // =========================================================
+  var geo = { coil:[], enclosure:[], tag:[], tagNormal:null, fieldLines:[], envelope:[], board:null };
+
+  function buildEnclosureEdges(){
+    var R = state.rAnt/2;
+    var halfW = Math.max(R*1.8, 45), halfH = Math.max(R*1.8, 35);
+    var zf = state.frontWall, zb = -state.backClear;
+    var corners = [
+      [-halfW,-halfH,zf], [halfW,-halfH,zf], [halfW,halfH,zf], [-halfW,halfH,zf],
+      [-halfW,-halfH,zb], [halfW,-halfH,zb], [halfW,halfH,zb], [-halfW,halfH,zb]
+    ];
+    var edges = [
+      [0,1],[1,2],[2,3],[3,0],
+      [4,5],[5,6],[6,7],[7,4],
+      [0,4],[1,5],[2,6],[3,7]
+    ];
+    return edges.map(function(e){ return [corners[e[0]], corners[e[1]]]; });
+  }
+
+  function buildTag(){
+    var rt = state.rTag/2;
+    var tt = state.tilt*Math.PI/180;
+    var cx = state.lat, cy = state.latY, cz = tagZ();
+    var pts = [];
+    var n = 40;
+    for (var i=0;i<=n;i++){
+      var a = i/n*Math.PI*2;
+      var lx = rt*Math.cos(a), ly = rt*Math.sin(a);
+      var px = cx + lx*Math.cos(tt);
+      var pz = cz + lx*Math.sin(tt);
+      var py = cy + ly;
+      pts.push([px, py, pz]);
+    }
+    var nx = Math.sin(tt), nz = Math.cos(tt);
+    var normal = [[cx,cy,cz],[cx+nx*18,cy,cz+nz*18]];
+    return { ring: pts, normal: normal, center: [cx,cy,cz] };
+  }
+
+  // Traces through the COMBINED field (single reader, or both if dual mode
+  // is on) so lines correctly bend/cancel between two facing readers.
+  function traceFieldLine3D(seed, stepSize, maxSteps, dir, bboxR, bboxZ){
+    var pts = [];
+    var p = seed.slice();
+    for (var i=0;i<maxSteps;i++){
+      var b = totalFieldRaw(p[0], p[1], p[2]);
+      var bm = Math.sqrt(b[0]*b[0]+b[1]*b[1]+b[2]*b[2]) + 1e-9;
+      p = [ p[0]+dir*stepSize*b[0]/bm, p[1]+dir*stepSize*b[1]/bm, p[2]+dir*stepSize*b[2]/bm ];
+      pts.push(p.slice());
+      var rxy = Math.sqrt(p[0]*p[0]+p[1]*p[1]);
+      if (rxy > bboxR || Math.abs(p[2]-bboxZ.mid) > bboxZ.half) break;
+    }
+    return pts;
+  }
+
+  // zOffset: 0 for reader 1, state.spacing for reader 2 (seeds live in that
+  // reader's own wire, but the trace follows the combined field).
+  function buildFieldLinesForReader(zOffset){
+    var R = state.rAnt/2;
+    var n = currentPath.length;
+    var anchorStep = Math.max(1, Math.floor(n/16));
+    var d0s = [0.06, 0.16, 0.32, 0.55].map(function(f){ return f*R; });
+    var step = R*0.05, maxSteps = 200;
+    var bboxR = R*4.2;
+    var reach = R*4.2 + Math.abs(state.dualEnabled ? state.spacing : 0);
+    var bboxZ = { mid: state.dualEnabled ? state.spacing/2 : 0, half: reach };
+    var lines = [];
+    for (var i=0;i<n;i+=anchorStep){
+      var fr = frameAt(currentPath, i);
+      d0s.forEach(function(d0){
+        var seed = [fr.p[0]+fr.nx*d0, fr.p[1]+fr.ny*d0, zOffset];
+        var fwd = traceFieldLine3D(seed, step, maxSteps, 1, bboxR, bboxZ);
+        var bwd = traceFieldLine3D(seed, step, maxSteps, -1, bboxR, bboxZ);
+        bwd.reverse();
+        lines.push(bwd.concat([seed]).concat(fwd));
+      });
+    }
+    return lines;
+  }
+
+  function buildFieldLines(){
+    var lines = buildFieldLinesForReader(0);
+    if (state.dualEnabled) lines = lines.concat(buildFieldLinesForReader(state.spacing));
+    return lines;
+  }
+
+  // Iso-surface of field magnitude, swept as a tube around the loop's
+  // perimeter — a "square donut" for a square trace, an ordinary torus for a circle.
+  // Samples the POWERED (and, in dual mode, COMBINED) field against a FIXED,
+  // power-independent target, so the threshold means the same thing throughout.
+  function findIsoDistanceGeneric(p0, nx, ny, phi, target, maxD, step, zOffset){
+    var cosP = Math.cos(phi), sinP = Math.sin(phi);
+    var d = step;
+    for (; d < maxD; d += step){
+      var x = p0[0] + d*cosP*nx;
+      var y = p0[1] + d*cosP*ny;
+      var z = zOffset + d*sinP;
+      if (totalFieldMagAt(x, y, z) * powerFactor() <= target) return d;
+    }
+    return maxD;
+  }
+
+  function buildEnvelopeForReader(zOffset, sign){
+    var R = state.rAnt/2;
+    var refMag = fieldMagPath(0, 0, R*0.5); // fixed single-reader baseline, power=1
+    var target = refMag * (state.thresh/100);
+    var maxD = R*3.2, step = R*0.05;
+    var n = currentPath.length;
+    var anchorStep = Math.max(1, Math.floor(n/28));
+    var Nphi = 16;
+    var anchors = [];
+    for (var i=0;i<n;i+=anchorStep) anchors.push(i);
+    var rings = anchors.map(function(idx){
+      var fr = frameAt(currentPath, idx);
+      var originDist = Math.sqrt(fr.p[0]*fr.p[0] + fr.p[1]*fr.p[1]);
+      var ring = [];
+      for (var j=0;j<Nphi;j++){
+        var phi = j/Nphi*Math.PI*2;
+        var cosP = Math.cos(phi), sinP = Math.sin(phi);
+        // Rays pointing back toward the coil's centre must not be allowed to
+        // sail through it and out the far side (that's what used to inflate
+        // the donut into a sphere) — cap them just past the centre instead.
+        var towardOrigin = (cosP*fr.nx)*(-fr.p[0]) + (cosP*fr.ny)*(-fr.p[1]);
+        var localMax = towardOrigin > 0 ? Math.min(maxD, originDist*1.2) : maxD;
+        var d = findIsoDistanceGeneric(fr.p, fr.nx, fr.ny, phi, target, localMax, step, zOffset);
+        ring.push([ fr.p[0]+d*cosP*fr.nx, fr.p[1]+d*cosP*fr.ny, zOffset + d*sinP ]);
+      }
+      return ring;
+    });
+    var Naz = rings.length;
+    var quads = [];
+    for (var ii=0; ii<Naz; ii++){
+      var ii2 = (ii+1) % Naz;
+      for (var jj=0; jj<Nphi; jj++){
+        var jj2 = (jj+1) % Nphi;
+        var pts = [rings[ii][jj], rings[ii][jj2], rings[ii2][jj2], rings[ii2][jj]];
+        var zmid = (pts[0][2]+pts[1][2]+pts[2][2]+pts[3][2])/4;
+        // "front" = facing this reader's own tag side: for reader 1 (sign +1,
+        // zOffset 0) that's +z; for reader 2 facing back at it (sign -1), its
+        // own front is -z relative to its own plane.
+        var front = sign*(zmid - zOffset) >= 0;
+        quads.push({ pts: pts, front: front });
+      }
+    }
+    return quads;
+  }
+
+  function buildEnvelope(){
+    var quads = buildEnvelopeForReader(0, 1);
+    if (state.dualEnabled) quads = quads.concat(buildEnvelopeForReader(state.spacing, -1));
+    return quads;
+  }
+
+  // ---- PN532 board sprite (visual reference only, coplanar with the coil) ----
+  function buildBoardSprite(){
+    var R = state.rAnt/2;
+    var half = R*1.35;
+    var corner = half*0.12;
+    var rect = buildRoundedSquarePath(half, corner, 40);
+    var chipHalf = R*0.19;
+    var chip = [[-chipHalf,-chipHalf],[chipHalf,-chipHalf],[chipHalf,chipHalf],[-chipHalf,chipHalf]];
+    var holes = [[-half*0.72, half*0.72], [half*0.72, -half*0.72]];
+    var pins = [];
+    var pinCount = 8, pinW = R*0.05, pinH = R*0.16, rowY = -half*0.94;
+    var spacing = (half*1.3)/(pinCount-1);
+    for (var i=0;i<pinCount;i++){
+      var cx = -half*0.65 + i*spacing;
+      pins.push({ x:cx-pinW/2, y:rowY-pinH/2, w:pinW, h:pinH });
+    }
+    return { rect:rect, chip:chip, holes:holes, holeR:R*0.075, pins:pins };
+  }
+
+  function rebuildGeometry(){
+    rebuildAntennaPath();
+    geo.coil = currentPath.map(function(p){ return [p[0], p[1], 0]; });
+    geo.coil2 = state.dualEnabled ? currentPath.map(function(p){ return [p[0], p[1], state.spacing]; }) : null;
+    geo.enclosure = state.dualEnabled ? [] : buildEnclosureEdges();
+    var tag = buildTag();
+    geo.tag = tag.ring;
+    geo.tagNormal = tag.normal;
+    geo.tagCenter = tag.center;
+    geo.fieldLines = buildFieldLines();
+    geo.board = buildBoardSprite();
+  }
+
+  function rebuildEnvelope(){
+    geo.envelope = buildEnvelope();
+  }
+
+  // =========================================================
+  // camera / projection
+  // =========================================================
+  var cam = { az: 35*Math.PI/180, el: 20*Math.PI/180, radius: 170, target: [0,0,-5] };
+
+  function project(p, W, H){
+    var ex = cam.radius*Math.cos(cam.el)*Math.sin(cam.az);
+    var ey = cam.radius*Math.sin(cam.el);
+    var ez = cam.radius*Math.cos(cam.el)*Math.cos(cam.az);
+    var eye = [ex+cam.target[0], ey+cam.target[1], ez+cam.target[2]];
+    var fwd = norm(sub(cam.target, eye));
+    var worldUp = [0,1,0];
+    var right = norm(cross(fwd, worldUp));
+    var up = cross(right, fwd);
+    var rel = sub(p, eye);
+    var cx = dot(rel, right), cy = dot(rel, up), cz = dot(rel, fwd);
+    if (cz < 1) cz = 1;
+    var fov = 1/Math.tan(38*Math.PI/180/2);
+    var aspect = W/H;
+    var ndcX = (cx*fov/aspect)/cz;
+    var ndcY = (cy*fov)/cz;
+    return { x:(ndcX*0.5+0.5)*W, y:(1-(ndcY*0.5+0.5))*H, depth: cz };
+  }
+  function sub(a,b){ return [a[0]-b[0],a[1]-b[1],a[2]-b[2]]; }
+  function cross(a,b){ return [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]]; }
+  function dot(a,b){ return a[0]*b[0]+a[1]*b[1]+a[2]*b[2]; }
+  function norm(a){ var m=Math.sqrt(dot(a,a))+1e-9; return [a[0]/m,a[1]/m,a[2]/m]; }
+
+  function drawPolyline3D(ctx, W, H, pts3, colorFn, width){
+    var prev = null;
+    for (var i=0;i<pts3.length;i++){
+      var p = project(pts3[i], W, H);
+      if (prev){
+        ctx.strokeStyle = colorFn(pts3[i-1], pts3[i]);
+        ctx.lineWidth = width;
+        ctx.beginPath();
+        ctx.moveTo(prev.x, prev.y);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+      }
+      prev = p;
+    }
+  }
+
+  function roundRectPath(ctx, x, y, w, h, r){
+    ctx.beginPath();
+    ctx.moveTo(x+r, y);
+    ctx.arcTo(x+w, y, x+w, y+h, r);
+    ctx.arcTo(x+w, y+h, x, y+h, r);
+    ctx.arcTo(x, y+h, x, y, r);
+    ctx.arcTo(x, y, x+w, y, r);
+    ctx.closePath();
+  }
+
+  function drawBoardSprite(ctx, W, H, board, zOffset){
+    function proj2(p){ return project([p[0], p[1], zOffset || 0], W, H); }
+
+    ctx.beginPath();
+    board.rect.forEach(function(p,i){ var s=proj2(p); if(i===0) ctx.moveTo(s.x,s.y); else ctx.lineTo(s.x,s.y); });
+    ctx.closePath();
+    ctx.fillStyle = '#9c2b32';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.beginPath();
+    board.chip.forEach(function(p,i){ var s=proj2(p); if(i===0) ctx.moveTo(s.x,s.y); else ctx.lineTo(s.x,s.y); });
+    ctx.closePath();
+    ctx.fillStyle = '#14171c';
+    ctx.fill();
+
+    board.holes.forEach(function(h){
+      var s = proj2(h);
+      ctx.beginPath(); ctx.arc(s.x, s.y, 5, 0, Math.PI*2);
+      ctx.fillStyle = '#c8ccd2'; ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 1; ctx.stroke();
+    });
+
+    ctx.fillStyle = '#cfcfcf';
+    board.pins.forEach(function(pin){
+      var s1 = proj2([pin.x, pin.y]), s2 = proj2([pin.x+pin.w, pin.y+pin.h]);
+      var x = Math.min(s1.x,s2.x), y = Math.min(s1.y,s2.y);
+      var w = Math.max(2, Math.abs(s2.x-s1.x)), h = Math.max(2, Math.abs(s2.y-s1.y));
+      ctx.fillRect(x, y, w, h);
+    });
+  }
+
+  function drawBadge(ctx, x, y, text, color){
+    ctx.font = 'bold 12px ui-monospace, monospace';
+    var padX = 8, w = ctx.measureText(text).width + padX*2, h = 20;
+    ctx.fillStyle = 'rgba(6,10,14,0.88)';
+    roundRectPath(ctx, x, y-h/2, w, h, 6); ctx.fill();
+    ctx.strokeStyle = color; ctx.lineWidth = 1.3;
+    roundRectPath(ctx, x, y-h/2, w, h, 6); ctx.stroke();
+    ctx.fillStyle = color;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText(text, x+padX, y+1);
+    ctx.textBaseline = 'alphabetic';
+  }
+
+  var lastTagScreen = { x: 0, y: 0 };
+
+  function renderScene(){
+    var canvas = els.canvas;
+    var ctx = canvas.getContext('2d');
+    var W = canvas.width, H = canvas.height;
+    ctx.clearRect(0,0,W,H);
+
+    // floor grid for depth cue
+    var R = state.rAnt/2;
+    var gridN = 10, gridSize = Math.max(120, R*3);
+    ctx.strokeStyle = 'rgba(125,143,160,0.12)';
+    ctx.lineWidth = 1;
+    for (var i=-gridN;i<=gridN;i++){
+      var t = i/gridN*gridSize;
+      var a1 = project([-gridSize,-60,t], W, H), a2 = project([gridSize,-60,t], W, H);
+      ctx.beginPath(); ctx.moveTo(a1.x,a1.y); ctx.lineTo(a2.x,a2.y); ctx.stroke();
+      var b1 = project([t,-60,-gridSize], W, H), b2 = project([t,-60,gridSize], W, H);
+      ctx.beginPath(); ctx.moveTo(b1.x,b1.y); ctx.lineTo(b2.x,b2.y); ctx.stroke();
+    }
+
+    // enclosure wireframe
+    ctx.strokeStyle = 'rgba(219,230,238,0.4)';
+    ctx.lineWidth = 1.3;
+    ctx.setLineDash([4,3]);
+    geo.enclosure.forEach(function(edge){
+      var p1 = project(edge[0], W, H), p2 = project(edge[1], W, H);
+      ctx.beginPath(); ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y); ctx.stroke();
+    });
+    ctx.setLineDash([]);
+
+    // donut envelope + PN532 board, depth-sorted together so the board
+    // correctly occludes/reveals the near/far half of the iso-surface
+    var sceneItems = [];
+    if (showEnvelope && geo.envelope.length){
+      geo.envelope.forEach(function(q){
+        if (q.front ? !showFront : !showBack) return;
+        var sp = q.pts.map(function(p){ return project(p, W, H); });
+        var depth = (sp[0].depth + sp[1].depth + sp[2].depth + sp[3].depth) / 4;
+        sceneItems.push({ kind:'quad', sp:sp, front:q.front, depth:depth });
+      });
+    }
+    sceneItems.push({ kind:'board', depth: project([0,0,0], W, H).depth, zOffset: 0 });
+    if (state.dualEnabled){
+      sceneItems.push({ kind:'board', depth: project([0,0,state.spacing], W, H).depth, zOffset: state.spacing });
+    }
+    sceneItems.sort(function(a,b){ return b.depth - a.depth; });
+    sceneItems.forEach(function(item){
+      if (item.kind === 'board'){
+        drawBoardSprite(ctx, W, H, geo.board, item.zOffset);
+        return;
+      }
+      var col = item.front ? '95,208,224' : '245,146,74';
+      ctx.beginPath();
+      ctx.moveTo(item.sp[0].x, item.sp[0].y);
+      ctx.lineTo(item.sp[1].x, item.sp[1].y);
+      ctx.lineTo(item.sp[2].x, item.sp[2].y);
+      ctx.lineTo(item.sp[3].x, item.sp[3].y);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(' + col + ',0.16)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(' + col + ',0.3)';
+      ctx.lineWidth = 0.6;
+      ctx.stroke();
+    });
+
+    // field lines, colored by front(z>0)/back(z<0) relative to the midpoint
+    // between the two readers (single-reader mode: relative to z=0)
+    var frontSplit = state.dualEnabled ? state.spacing/2 : 0;
+    geo.fieldLines.forEach(function(line){
+      drawPolyline3D(ctx, W, H, line, function(pa, pb){
+        var zmid = (pa[2]+pb[2])/2;
+        if (zmid >= frontSplit) return showFront ? 'rgba(95,208,224,0.55)' : 'rgba(0,0,0,0)';
+        return showBack ? 'rgba(245,146,74,0.55)' : 'rgba(0,0,0,0)';
+      }, 1.1);
+    });
+
+    // antenna trace(s) (copper), on top of the board sprite(s)
+    ctx.strokeStyle = '#e8c15a';
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    geo.coil.forEach(function(p,i){
+      var s = project(p, W, H);
+      if (i===0) ctx.moveTo(s.x,s.y); else ctx.lineTo(s.x,s.y);
+    });
+    ctx.closePath();
+    ctx.stroke();
+    if (geo.coil2){
+      ctx.strokeStyle = '#8fd0e8';
+      ctx.beginPath();
+      geo.coil2.forEach(function(p,i){
+        var s = project(p, W, H);
+        if (i===0) ctx.moveTo(s.x,s.y); else ctx.lineTo(s.x,s.y);
+      });
+      ctx.closePath();
+      ctx.stroke();
+    }
+
+    // tag ring + normal
+    var m = metrics();
+    var lvl = verdictLevel(m.frontPct);
+    var col = levelColor(lvl);
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    geo.tag.forEach(function(p,i){
+      var s = project(p, W, H);
+      if (i===0) ctx.moveTo(s.x,s.y); else ctx.lineTo(s.x,s.y);
+    });
+    ctx.closePath();
+    ctx.stroke();
+    var n1 = project(geo.tagNormal[0], W, H), n2 = project(geo.tagNormal[1], W, H);
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(n1.x,n1.y); ctx.lineTo(n2.x,n2.y); ctx.stroke();
+
+    var tagCenterProj = project(geo.tagCenter, W, H);
+    lastTagScreen = { x: tagCenterProj.x, y: tagCenterProj.y };
+
+    // labels
+    ctx.font = '10px ui-monospace, monospace';
+    ctx.fillStyle = 'rgba(219,230,238,0.55)';
+    ctx.textAlign = 'center';
+    var coilLabel = project([0, R*1.4+8, 0], W, H);
+    ctx.fillText(state.dualEnabled ? 'PN532 #1' : 'PN532 board', coilLabel.x, coilLabel.y);
+    if (state.dualEnabled){
+      var coil2Label = project([0, R*1.4+8, state.spacing], W, H);
+      ctx.fillText('PN532 #2', coil2Label.x, coil2Label.y);
+    } else {
+      var backLabel = project([0,0,-state.backClear], W, H);
+      ctx.fillStyle = 'rgba(245,146,74,0.75)';
+      ctx.fillText('electronics / back panel', backLabel.x, backLabel.y+14);
+    }
+
+    // live read-quality badge, anchored to the tag
+    drawBadge(ctx, tagCenterProj.x+14, tagCenterProj.y-16, Math.round(m.frontPct)+'% · '+levelLabel(lvl), col);
+
+    els.camReadout.textContent = 'az ' + Math.round(cam.az*180/Math.PI) + '° · el ' + Math.round(cam.el*180/Math.PI) + '°';
+  }
+
+  function updateReadout(){
+    var m = metrics();
+    var lvl = verdictLevel(m.frontPct);
+    els.verdict.className = 'verdict ' + lvl;
+    els.verdictText.textContent = levelLabel(lvl);
+    els.mFront.textContent = Math.round(m.frontPct) + ' %';
+    els.mBack.textContent = Math.round(m.backPct) + ' %';
+    els.mTilt.textContent = Math.round(m.tiltLoss) + ' %';
+  }
+
+  function updateLabels(){
+    Object.keys(DEFAULTS).forEach(function(k){
+      els[k+'Val'].textContent = state[k] + ' ' + UNITS[k];
+    });
+  }
+
+  var rafPending = false;
+  var geometryDirty = true;
+  var envelopeDirty = true;
+  function scheduleRender(dirty, envDirty){
+    if (dirty) geometryDirty = true;
+    if (dirty || envDirty) envelopeDirty = true;
+    if (rafPending) return;
+    rafPending = true;
+    requestAnimationFrame(function(){
+      rafPending = false;
+      if (geometryDirty){ rebuildGeometry(); geometryDirty = false; }
+      if (envelopeDirty){ rebuildEnvelope(); envelopeDirty = false; }
+      updateLabels();
+      updateReadout();
+      renderScene();
+    });
+  }
+
+  ['rAnt','rTag','frontWall','backClear','standoff','lat','latY','tilt'].forEach(function(k){
+    els[k].addEventListener('input', function(){
+      state[k] = parseFloat(els[k].value);
+      if (k === 'rAnt'){
+        document.querySelectorAll('#antPresets button').forEach(function(b){
+          b.classList.toggle('active', parseFloat(b.getAttribute('data-v')) === state.rAnt);
+        });
+      }
+      scheduleRender(true);
+    });
+  });
+  els.thresh.addEventListener('input', function(){
+    state.thresh = parseFloat(els.thresh.value);
+    scheduleRender(false, true);
+  });
+  els.power.addEventListener('input', function(){
+    state.power = parseFloat(els.power.value);
+    scheduleRender(false, true);
+  });
+  els.spacing.addEventListener('input', function(){
+    state.spacing = parseFloat(els.spacing.value);
+    scheduleRender(true);
+  });
+  els.toggleDual.addEventListener('click', function(){
+    state.dualEnabled = !state.dualEnabled;
+    els.toggleDual.setAttribute('data-active', state.dualEnabled);
+    els.spacingField.style.display = state.dualEnabled ? '' : 'none';
+    scheduleRender(true);
+  });
+
+  document.querySelectorAll('.presetbar button').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var key = btn.getAttribute('data-set');
+      var v = parseFloat(btn.getAttribute('data-v'));
+      state[key] = v;
+      els[key].value = v;
+      var group = btn.parentElement;
+      group.querySelectorAll('button').forEach(function(b){
+        b.classList.toggle('active', b === btn);
+      });
+      scheduleRender(true);
+    });
+  });
+
+  els.resetBtn.addEventListener('click', function(){
+    Object.keys(DEFAULTS).forEach(function(k){
+      state[k] = DEFAULTS[k];
+      els[k].value = DEFAULTS[k];
+    });
+    document.querySelectorAll('.presetbar').forEach(function(group){
+      group.querySelectorAll('button').forEach(function(b){
+        var key = b.getAttribute('data-set');
+        b.classList.toggle('active', parseFloat(b.getAttribute('data-v')) === state[key]);
+      });
+    });
+    cam.az = 35*Math.PI/180; cam.el = 20*Math.PI/180; cam.radius = 170;
+    state.dualEnabled = false;
+    els.toggleDual.setAttribute('data-active', false);
+    els.spacingField.style.display = 'none';
+    scheduleRender(true);
+  });
+
+  els.toggleFront.addEventListener('click', function(){
+    showFront = !showFront;
+    els.toggleFront.setAttribute('data-active', showFront);
+    scheduleRender(false);
+  });
+  els.toggleBack.addEventListener('click', function(){
+    showBack = !showBack;
+    els.toggleBack.setAttribute('data-active', showBack);
+    scheduleRender(false);
+  });
+  els.toggleEnvelope.addEventListener('click', function(){
+    showEnvelope = !showEnvelope;
+    els.toggleEnvelope.setAttribute('data-active', showEnvelope);
+    scheduleRender(false);
+  });
+
+  // ---- orbit + tag drag controls ----
+  var dragMode = null; // 'orbit' | 'tag'
+  var lastX = 0, lastY = 0;
+  var TAG_HIT_RADIUS = 28;
+  var MM_PER_PX = 0.15;
+
+  function pointerXY(evt){
+    var t = evt.touches ? evt.touches[0] : evt;
+    var rect = els.canvas.getBoundingClientRect();
+    var scaleX = els.canvas.width / rect.width;
+    return [(t.clientX - rect.left) * scaleX, (t.clientY - rect.top) * scaleX];
+  }
+  function startDrag(evt){
+    var p = pointerXY(evt);
+    var dx = p[0]-lastTagScreen.x, dy = p[1]-lastTagScreen.y;
+    dragMode = Math.sqrt(dx*dx+dy*dy) < TAG_HIT_RADIUS ? 'tag' : 'orbit';
+    els.canvas.classList.add('grabbing');
+    lastX = p[0]; lastY = p[1];
+  }
+  function moveDrag(evt){
+    if (!dragMode) return;
+    var p = pointerXY(evt);
+    var dx = p[0]-lastX, dy = p[1]-lastY;
+    if (dragMode === 'orbit'){
+      cam.az += dx * 0.008;
+      cam.el += dy * -0.008;
+      cam.el = Math.max(-1.4, Math.min(1.4, cam.el));
+      scheduleRender(false);
+    } else {
+      if (evt.shiftKey){
+        state.standoff = Math.max(0, Math.min(60, state.standoff - dy*MM_PER_PX));
+      } else {
+        state.lat = Math.max(-100, Math.min(100, state.lat + dx*MM_PER_PX));
+        state.latY = Math.max(-100, Math.min(100, state.latY - dy*MM_PER_PX));
+      }
+      els.lat.value = Math.round(state.lat);
+      els.latY.value = Math.round(state.latY);
+      els.standoff.value = Math.round(state.standoff);
+      scheduleRender(true);
+    }
+    lastX = p[0]; lastY = p[1];
+  }
+  function endDrag(){ dragMode = null; els.canvas.classList.remove('grabbing'); }
+
+  els.canvas.addEventListener('mousedown', startDrag);
+  els.canvas.addEventListener('touchstart', function(evt){ startDrag(evt); evt.preventDefault(); }, {passive:false});
+  window.addEventListener('mousemove', moveDrag);
+  window.addEventListener('touchmove', function(evt){ moveDrag(evt); evt.preventDefault(); }, {passive:false});
+  window.addEventListener('mouseup', endDrag);
+  window.addEventListener('touchend', endDrag);
+  els.canvas.addEventListener('wheel', function(evt){
+    cam.radius *= (1 + (evt.deltaY>0 ? 0.08 : -0.08));
+    cam.radius = Math.max(60, Math.min(500, cam.radius));
+    scheduleRender(false);
+    evt.preventDefault();
+  }, {passive:false});
+
+  scheduleRender(true);
+})();
+</script>
