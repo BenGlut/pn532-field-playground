@@ -282,8 +282,8 @@
         <button id="toggleDual" class="dualbtn" data-active="false">2nd reader (face-to-face)</button>
       </div>
       <div class="field" id="spacingField" style="display:none">
-        <div class="row"><label for="spacing">Reader-to-reader spacing</label><span class="val" id="spacingVal">58.65 mm</span></div>
-        <input type="range" id="spacing" min="10" max="200" value="58.65" step="0.05">
+        <div class="row"><label for="spacing">Reader-to-reader spacing</label><span class="val" id="spacingVal">88 mm</span></div>
+        <input type="range" id="spacing" min="10" max="200" value="88" step="0.05">
         <div class="hint2">The two readers spread apart <b>symmetrically</b> around a fixed centre as you move this — the two RFID chips stay put, exactly 58.65 mm apart (the spool core's cardboard width, excl. masterspool), since they're glued to the same rigid core that never moves. Widen the spacing to add clearance around the core; narrow it to see the readers crowd it. Turns off the Tiger Scale housing view — this is a bare cross-talk test. Both readers are simulated at the same power.</div>
       </div>
 
@@ -347,7 +347,7 @@
 
   var UNITS = { rAnt:'mm', power:'%', rTag:'mm', frontWall:'mm', backClear:'mm', standoff:'mm', lat:'mm', latY:'mm', tilt:'°', thresh:'%', spacing:'mm' };
 
-  var DEFAULTS = { rAnt:39, power:100, rTag:25, frontWall:4, backClear:15, standoff:0, lat:0, latY:0, tilt:0, thresh:40, spacing:58.65 };
+  var DEFAULTS = { rAnt:39, power:100, rTag:25, frontWall:4, backClear:15, standoff:0, lat:0, latY:0, tilt:0, thresh:40, spacing:88 };
   var state = {};
   Object.keys(DEFAULTS).forEach(function(k){ state[k] = DEFAULTS[k]; });
   state.dualEnabled = false;
