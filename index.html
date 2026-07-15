@@ -282,8 +282,8 @@
         <button id="toggleDual" class="dualbtn" data-active="false">2nd reader (face-to-face)</button>
       </div>
       <div class="field" id="spacingField" style="display:none">
-        <div class="row"><label for="spacing">Reader-to-reader spacing</label><span class="val" id="spacingVal">60 mm</span></div>
-        <input type="range" id="spacing" min="10" max="200" value="60" step="1">
+        <div class="row"><label for="spacing">Reader-to-reader spacing</label><span class="val" id="spacingVal">88 mm</span></div>
+        <input type="range" id="spacing" min="10" max="200" value="88" step="1">
         <div class="hint2">Turns off the Tiger Scale housing view — this is a bare cross-talk test. Both readers are simulated at the same power.</div>
       </div>
 
@@ -347,7 +347,7 @@
 
   var UNITS = { rAnt:'mm', power:'%', rTag:'mm', frontWall:'mm', backClear:'mm', standoff:'mm', lat:'mm', latY:'mm', tilt:'°', thresh:'%', spacing:'mm' };
 
-  var DEFAULTS = { rAnt:39, power:100, rTag:25, frontWall:4, backClear:15, standoff:0, lat:0, latY:0, tilt:0, thresh:40, spacing:60 };
+  var DEFAULTS = { rAnt:39, power:100, rTag:25, frontWall:4, backClear:15, standoff:0, lat:0, latY:0, tilt:0, thresh:40, spacing:88 };
   var state = {};
   Object.keys(DEFAULTS).forEach(function(k){ state[k] = DEFAULTS[k]; });
   state.dualEnabled = false;
