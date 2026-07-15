@@ -285,7 +285,7 @@
       <div class="field" id="spacingField">
         <div class="row"><label for="spacing">Reader-to-reader spacing</label><span class="val" id="spacingVal">88 mm</span></div>
         <input type="range" id="spacing" min="10" max="200" value="88" step="0.05">
-        <div class="hint2">The two readers spread apart <b>symmetrically</b> around a fixed centre as you move this — the two RFID chips stay put, exactly 58.65 mm apart (the spool core's cardboard width, excl. masterspool), since they're glued to the same rigid core that never moves. Widen the spacing to add clearance around the core; narrow it to see the readers crowd it. Turns off the Tiger Scale housing view — this is a bare cross-talk test. Both readers are simulated at the same power.</div>
+        <div class="hint2">The two readers spread apart <b>symmetrically</b> around a fixed centre as you move this — the two RFID chips stay put, exactly 58.65 mm apart (the spool core's cardboard width, excl. masterspool), since they're glued to the same rigid core that never moves. Widen the spacing to add clearance around the core; narrow it to see the readers crowd it. Watch the <b>Reader cross-talk</b> figure up top — that's how much of the other reader's field lands on your own coil, the field-side proxy for "are they polluting each other." Turns off the Tiger Scale housing view — this is a bare cross-talk test. Both readers are simulated at the same power.</div>
       </div>
 
       <button class="resetbtn" id="resetBtn">Reset to defaults</button>
@@ -296,7 +296,7 @@
         <span class="verdict good" id="verdict"><span class="dot"></span><span id="verdictText">Likely read</span></span>
         <div class="metrics">
           <div class="metric"><div class="k">Front coupling</div><div class="v front" id="mFront">100 %</div></div>
-          <div class="metric"><div class="k">Back exposure</div><div class="v back" id="mBack">—</div></div>
+          <div class="metric"><div class="k" id="mBackLabel">Back exposure</div><div class="v back" id="mBack">—</div></div>
           <div class="metric"><div class="k">Tilt loss</div><div class="v" id="mTilt">0 %</div></div>
         </div>
       </div>
@@ -319,7 +319,7 @@
 
   <footer class="note">
     <b>Model.</b> The reader antenna is simulated as a rounded-square current loop — matching the actual square PCB trace on a PN532 module (see the board sprite) rather than a circular approximation. Field is computed by numerically integrating the Biot–Savart law around that square path at any 3D point, and both the field lines and the donut iso-surface are built the same way: a tube swept around the loop's perimeter, not a simple revolved circle. The <b>reader power</b> slider scales the coil's drive current — it grows or shrinks the donut and the coupling/exposure percentages, but never changes the field lines' shape (a stronger field doesn't bend differently, it just reaches farther). The NTAG215 tag is still modelled as a small circular loop (that part of the physics doesn't change shape-to-shape). Coupling and exposure numbers are <b>relative</b>, not calibrated field strengths: your board's real matching network, driver gain, and any metal/ferrite in the housing all shift the real numbers. Use this to reason about geometry — how much front wall you can afford, how close the electronics can sit behind the coil, how much tilt and offset you can tolerate — then confirm with a real tag against the actual housing.
-    <b>Dual-reader playground.</b> Two facing PN532 loops are summed by superposition (Biot–Savart is linear) with the second loop wound the opposite way in the global frame, since it faces back at the first — this is a reasonable proxy for whether one reader's field reaches into the other's read zone. It is <b>not</b> a full mutual-inductance/impedance-detuning simulation: on real hardware, two coils this close also shift each other's tuning and Q, which this field-only model doesn't capture. Treat it as "does the geometry leave room for the fields to coexist," then verify the actual detuning on the bench.
+    <b>Dual-reader playground.</b> Two facing PN532 loops are summed by superposition (Biot–Savart is linear) with the second loop wound the opposite way in the global frame, since it faces back at the first — this is a reasonable proxy for whether one reader's field reaches into the other's read zone. The <b>Reader cross-talk</b> figure is the flux from reader 2 threading through reader 1's own loop area (and, by reciprocity, the same the other way) — a rough field-side stand-in for how much mutual inductance the two antennas will fight in real life: the higher that number, the more you should expect resonant-frequency drift and Q loss on both readers, not just a weaker read at the tag. This is <b>not</b> a full mutual-inductance/impedance-detuning simulation, though — real coils this close also shift each other's tuning, and if both transmit their 13.56&nbsp;MHz carrier at the same time, that's a separate RF interference problem this magnetostatic model doesn't touch either. Treat this playground as "does the geometry leave room for the fields to coexist," then verify actual detuning and carrier interference on the bench (e.g. with a network analyzer or by toggling one reader on/off in firmware to compare read rates).
   </footer>
 </div>
 
@@ -336,6 +336,7 @@
   els.verdictText = document.getElementById('verdictText');
   els.mFront = document.getElementById('mFront');
   els.mBack = document.getElementById('mBack');
+  els.mBackLabel = document.getElementById('mBackLabel');
   els.mTilt = document.getElementById('mTilt');
   els.canvas = document.getElementById('scene');
   els.camReadout = document.getElementById('camReadout');
@@ -468,6 +469,21 @@
     var b = loopFieldPath(currentPath, 0, 0, -backClear);
     var p = powered ? powerFactor() : 1;
     return Math.abs(b[2]) * p * Math.PI * R * R;
+  }
+
+  // Mutual exposure between the two readers: how much of reader 2's field
+  // threads through reader 1's own loop (by reciprocity, same the other way
+  // round). This is the field-side proxy for real-world antenna detuning —
+  // more flux from the other coil means more mutual inductance to fight.
+  function crossTalkRaw(){
+    var R = state.rAnt/2;
+    var b2 = loopFieldPath(currentPath, 0, 0, -state.spacing);
+    return Math.abs(b2[2]) * powerFactor() * Math.PI * R * R;
+  }
+  function crossTalkPct(){
+    var R = state.rAnt/2;
+    var ref = backExposureAt(R*0.5, false);
+    return ref>0 ? Math.max(0, Math.min(300, (crossTalkRaw()/ref)*100)) : 0;
   }
 
   // The two RFID chips are fixed to the same rigid cardboard spool core —
@@ -993,8 +1009,14 @@
     els.verdict.className = 'verdict ' + lvl;
     els.verdictText.textContent = levelLabel(lvl);
     els.mFront.textContent = Math.round(m.frontPct) + ' %';
-    els.mBack.textContent = Math.round(m.backPct) + ' %';
     els.mTilt.textContent = Math.round(m.tiltLoss) + ' %';
+    if (state.dualEnabled){
+      els.mBackLabel.textContent = 'Reader cross-talk';
+      els.mBack.textContent = Math.round(crossTalkPct()) + ' %';
+    } else {
+      els.mBackLabel.textContent = 'Back exposure';
+      els.mBack.textContent = Math.round(m.backPct) + ' %';
+    }
   }
 
   function updateLabels(){
