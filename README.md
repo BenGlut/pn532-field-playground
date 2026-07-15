@@ -1,11 +1,15 @@
 # PN532 Field Placement Simulator
 
+**▶ [Open the live playground](https://benglut.github.io/pn532-field-playground/)**
+
 A self-contained, single-file 3D playground for reasoning about PN532 (13.56 MHz NFC/RFID)
 antenna placement — how far a tag can sit, how much tilt/offset it tolerates, how a housing
 wall and nearby electronics affect range, and what happens when two readers face each other.
 
-Open [`index.html`](index.html) directly in a browser (or via GitHub Pages) — no build step,
-no dependencies, everything (physics, 3D renderer, UI) is in one HTML file.
+No build step, no dependencies — everything (physics, 3D renderer, UI) lives in one HTML file,
+[`index.html`](index.html). GitHub doesn't render `.html` files in the repo view (it just shows
+the source), so the link above (GitHub Pages) is the way to actually open and interact with it;
+you can also download `index.html` and open it locally in any browser.
 
 ## What it simulates
 
